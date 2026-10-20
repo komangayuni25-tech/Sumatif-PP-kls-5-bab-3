@@ -56,6 +56,17 @@ export const GasGuideModal: React.FC<GasGuideModalProps> = ({ isOpen, onClose })
             </code>
           </div>
 
+          {/* Fitur Multi-Mapel Banner */}
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs space-y-1">
+            <span className="font-bold flex items-center gap-1.5 text-emerald-800">
+              <Check className="w-4 h-4 text-emerald-600" />
+              Dukungan Multi-Mata Pelajaran (1 Spreadsheet untuk Semua Mapel):
+            </span>
+            <p className="text-[11px] text-emerald-900 leading-relaxed">
+              Skrip terbaru ini <strong>otomatis memisahkan nilai siswa ke dalam tab lembar masing-masing mata pelajaran</strong> (misal tab: <em>Pendidikan Pancasila</em>, <em>Matematika</em>, <em>IPAS</em>). Jika tab mata pelajaran tersebut belum ada di spreadsheet, skrip akan <strong>otomatis membuatnya lengkap dengan kolom teks jawaban</strong>! Anda cukup menggunakan 1 URL yang sama untuk semua web ujian.
+            </p>
+          </div>
+
           {/* Langkah demi langkah */}
           <div className="space-y-2.5">
             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
@@ -71,7 +82,7 @@ export const GasGuideModal: React.FC<GasGuideModalProps> = ({ isOpen, onClose })
                   A1: Timestamp | B1: Nama | C1: Kelas | D1: Nomor Absen | E1: Tanggal Lahir | F1: Benar | G1: Salah | H1: Nilai | I1: Status | J1: Mata Pelajaran | K1: Teks Jawaban Siswa
                 </div>
                 <p className="mt-1 text-[11px] text-blue-700 font-medium">
-                  * Catatan: Skrip terbaru di bawah akan otomatis menambahkan kolom <strong>K1 (Teks Jawaban Siswa)</strong> jika belum ada di spreadsheet Anda.
+                  * Catatan: Kolom <strong>K1 (Teks Jawaban Siswa)</strong> dan tab mata pelajaran baru akan dibuat otomatis oleh skrip di bawah.
                 </p>
               </li>
               <li>

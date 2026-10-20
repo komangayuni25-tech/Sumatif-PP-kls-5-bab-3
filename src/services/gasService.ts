@@ -16,10 +16,11 @@ export const gasService = {
     try {
       const custom = localStorage.getItem(STORAGE_CUSTOM_GAS_URL_KEY);
       if (custom && custom.trim().startsWith('http')) {
-        // Jika URL tersimpan adalah URL versi lama, perbarui ke URL aktif
+        // Jika URL tersimpan adalah URL versi lama, perbarui ke URL aktif permanen
         if (
           custom.includes('AKfycbzBuJrheUE3MRAvNlUEZut3q0LQL5-J62sy8w_rfsBz72VJGt7IHyFPj0WORSB8dUCmeQ') ||
-          custom.includes('AKfycbx6Bki20asJdxZX-I6kmXwGIyd6pOApUMTD-92t7rFVdIuYH86ApVatKYEsBbZYttJSng')
+          custom.includes('AKfycbx6Bki20asJdxZX-I6kmXwGIyd6pOApUMTD-92t7rFVdIuYH86ApVatKYEsBbZYttJSng') ||
+          custom.includes('AKfycbyVhWUJvJTJZKoFFrAupa9eOQGc-rXlyvkmyG4RDThAajanzuktygejhYn1SKMjyt22Rg')
         ) {
           localStorage.removeItem(STORAGE_CUSTOM_GAS_URL_KEY);
           return CONFIG.GOOGLE_APPS_SCRIPT_URL;
@@ -282,7 +283,9 @@ export const gasService = {
     }
 
     try {
-      const readUrl = `${url}${url.includes('?') ? '&' : '?'}action=read&t=${Date.now()}`;
+      const readUrl = `${url}${url.includes('?') ? '&' : '?'}action=read&sheet=${encodeURIComponent(
+        CONFIG.MATA_PELAJARAN
+      )}&t=${Date.now()}`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 7000);
 
@@ -458,12 +461,22 @@ export const GAS_SCRIPT_TEMPLATE = `/**
 
 function doGet(e) {
   try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var data = sheet.getDataRange().getValues();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetParam = (e && e.parameter && e.parameter.sheet) ? String(e.parameter.sheet).trim() : "";
+    var targetSheet = sheetParam ? ss.getSheetByName(sheetParam) : null;
     
+    // Jika tab spesifik mata pelajaran tidak ditemukan, gunakan sheet aktif
+    if (!targetSheet) {
+      targetSheet = ss.getActiveSheet();
+    }
+    
+    var data = targetSheet.getDataRange().getValues();
     if (data.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify({ success: true, data: [] }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        sheet: targetSheet.getName(),
+        data: []
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
     var headers = data[0];
@@ -479,11 +492,16 @@ function doGet(e) {
       results.push(item);
     }
     
-    return ContentService.createTextOutput(JSON.stringify({ success: true, data: results }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      sheet: targetSheet.getName(),
+      data: results
+    })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -491,7 +509,17 @@ function doPost(e) {
   try {
     var raw = e.postData ? e.postData.contents : "{}";
     var contents = JSON.parse(raw);
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. DUKUNGAN MULTI-MATA PELAJARAN (OTOMATIS MASUK TAB MAPEL MASING-MASING)
+    var mataPelajaran = contents.mataPelajaran || contents.subject || "Pendidikan Pancasila";
+    var targetTabName = String(contents.sheet || mataPelajaran).trim().substring(0, 50);
+    
+    var sheet = ss.getSheetByName(targetTabName);
+    if (!sheet) {
+      // Jika tab untuk mata pelajaran ini belum ada, buat tab baru secara otomatis!
+      sheet = ss.insertSheet(targetTabName);
+    }
     
     // Inisialisasi Header jika sheet masih kosong
     if (sheet.getLastRow() === 0) {
@@ -508,6 +536,10 @@ function doPost(e) {
         "Mata Pelajaran",
         "Teks Jawaban Siswa"
       ]);
+      // Format Header (Tebal & Latar Lembut)
+      var hRange = sheet.getRange(1, 1, 1, 11);
+      hRange.setFontWeight("bold");
+      hRange.setBackground("#E0E7FF");
     } else {
       // Pastikan header "Teks Jawaban Siswa" ada di baris 1 (kolom ke-11) jika belum ada
       var lastCol = sheet.getLastColumn();
@@ -522,7 +554,7 @@ function doPost(e) {
           }
         }
         if (!hasJawabanCol) {
-          sheet.getRange(1, lastCol + 1).setValue("Teks Jawaban Siswa");
+          sheet.getRange(1, lastCol + 1).setValue("Teks Jawaban Siswa").setFontWeight("bold");
         }
       }
     }
@@ -538,12 +570,16 @@ function doPost(e) {
         var rowName = String(data[i][1]).trim().toLowerCase();
         if ((targetTimestamp && rowTime === targetTimestamp) || (targetNama && rowName === targetNama)) {
           sheet.deleteRow(i + 1);
-          return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Data berhasil dihapus" }))
-            .setMimeType(ContentService.MimeType.JSON);
+          return ContentService.createTextOutput(JSON.stringify({
+            success: true,
+            message: "Data berhasil dihapus dari tab " + targetTabName
+          })).setMimeType(ContentService.MimeType.JSON);
         }
       }
-      return ContentService.createTextOutput(JSON.stringify({ success: false, message: "Data tidak ditemukan" }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: "Data tidak ditemukan"
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // Fitur Tambah / Simpan Hasil Tes Siswa
@@ -556,7 +592,6 @@ function doPost(e) {
     var salah = contents.incorrectCount !== undefined ? contents.incorrectCount : (contents.salah || 0);
     var nilai = contents.finalScore !== undefined ? contents.finalScore : (contents.nilai || 0);
     var status = contents.status || (nilai >= 70 ? "Lulus" : "Belum Lulus");
-    var mataPelajaran = contents.mataPelajaran || "Pendidikan Pancasila";
     
     // Teks Hasil Jawaban Siswa lengkap nomor 1 s.d. 45
     var teksJawaban = contents.teksJawaban || contents.rincianJawaban || contents.jawabanSiswa || "";
@@ -589,7 +624,8 @@ function doPost(e) {
     
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      message: "Hasil tes siswa dan teks rincian jawaban berhasil disimpan ke Google Spreadsheet"
+      sheet: targetTabName,
+      message: "Hasil tes dan teks jawaban siswa berhasil disimpan ke tab " + targetTabName
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({

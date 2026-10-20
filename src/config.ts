@@ -17,6 +17,6 @@ export const CONFIG = {
   KKTP: 70,
   ADMIN_PASSWORD: "GURUADMIN",
   
-  // Endpoint Google Apps Script Web App utama
-  GOOGLE_APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyVhWUJvJTJZKoFFrAupa9eOQGc-rXlyvkmyG4RDThAajanzuktygejhYn1SKMjyt22Rg/exec",
+  // Endpoint Google Apps Script Web App utama permanen
+  GOOGLE_APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbw0yOzLDvgZ-_BRjHa1KzoCuA2j8DD971mV_k6eL8RW1u8Sd7ZINScgtmFu24uaDKCjuw/exec",
 };
