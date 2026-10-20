@@ -229,6 +229,9 @@ export const gasService = {
       status: result.status,
       mataPelajaran: CONFIG.MATA_PELAJARAN,
       sekolah: CONFIG.SEKOLAH,
+      teksJawaban: result.teksJawaban || '',
+      rincianJawaban: result.teksJawaban || '',
+      jawabanSiswa: result.teksJawaban || '',
       // Format camelCase alternatif (kompatibilitas menyeluruh)
       studentName: result.nama,
       className: result.kelas || CONFIG.KELAS,
@@ -242,36 +245,20 @@ export const gasService = {
     };
 
     try {
-      // Mengirim sebagai text/plain untuk mencegah browser memicu CORS preflight OPTIONS
-      const response = await fetch(url, {
+      // Mengirim dengan mode no-cors agar browser langsung mengirim data ke Google Apps Script tanpa terhambat CORS saat 302 redirect
+      await fetch(url, {
         method: 'POST',
+        mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        console.warn(`GAS POST merespons HTTP ${response.status}`);
-        return {
-          success: true,
-          savedLocally: true,
-          message: `Hasil tes tersimpan di perangkat ini. (Cloud respons HTTP ${response.status})`,
-        };
-      }
-
-      const text = await response.text();
-      let data: any = {};
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { success: true };
-      }
-
       return {
         success: true,
         savedLocally: true,
-        message: data.message || 'Jawaban dan hasil tes berhasil disimpan ke Google Spreadsheet.',
+        message: 'Jawaban dan hasil tes berhasil dikirim ke Google Spreadsheet.',
       };
     } catch (err: any) {
       console.warn('Gagal sinkronisasi langsung ke Google Apps Script (tersimpan lokal):', err);
@@ -343,6 +330,15 @@ export const gasService = {
           const nilai = Number(item.finalScore ?? item.Nilai ?? item.nilai ?? 0);
           const status = item.status || (nilai >= CONFIG.KKTP ? 'Lulus' : 'Belum Lulus');
           const tglLahir = item.birthDate || item['Tanggal Lahir'] || item.tglLahir || '';
+          const teksJawaban = String(
+            item['Teks Jawaban Siswa'] ||
+              item.teksJawaban ||
+              item['Rincian Jawaban'] ||
+              item.rincianJawaban ||
+              item['Jawaban Siswa'] ||
+              item.jawabanSiswa ||
+              ''
+          );
 
           return {
             id: item.id || `gas-${idx}-${timestamp}`,
@@ -355,18 +351,27 @@ export const gasService = {
             salah,
             nilai,
             status: status === 'Lulus' ? 'Lulus' : 'Belum Lulus',
+            teksJawaban: teksJawaban || undefined,
+            detailJawaban: item.detailJawaban || item.answers || undefined,
           };
         });
 
-      // Gabungkan data remote dengan data lokal yang belum ada di remote
+      // Gabungkan data remote dengan data lokal yang belum ada di remote, dan perkaya jawaban jika ada
       const combined = [...remoteResults];
       localResults.forEach((loc) => {
-        const alreadyInRemote = combined.some(
+        const remoteMatch = combined.find(
           (rem) =>
             rem.nama.trim().toLowerCase() === loc.nama.trim().toLowerCase() &&
             rem.noAbsen === loc.noAbsen
         );
-        if (!alreadyInRemote) {
+        if (remoteMatch) {
+          if (!remoteMatch.teksJawaban && loc.teksJawaban) {
+            remoteMatch.teksJawaban = loc.teksJawaban;
+          }
+          if (!remoteMatch.detailJawaban && loc.detailJawaban) {
+            remoteMatch.detailJawaban = loc.detailJawaban;
+          }
+        } else {
           combined.push(loc);
         }
       });
@@ -396,15 +401,16 @@ export const gasService = {
     };
 
     try {
-      const response = await fetch(url, {
+      await fetch(url, {
         method: 'POST',
+        mode: 'no-cors',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify(payload),
       });
 
-      return response.ok;
+      return true;
     } catch (err: any) {
       console.warn('Gagal menghapus di remote GAS (namun sudah terhapus di lokal):', err);
       return true;
@@ -436,21 +442,18 @@ export const gasService = {
  */
 export const GAS_SCRIPT_TEMPLATE = `/**
  * SKRIP GOOGLE APPS SCRIPT UNTUK REKAP TES SUMATIF
- * SEKOLAH DASAR - JEMBRANA - KELAS VI
+ * SD NEGERI 3 LOLOAN TIMUR - KELAS 5
+ * Mata Pelajaran: Pendidikan Pancasila (Norma dalam Kehidupanku)
  *
- * PANDUAN PEMASANGAN (HANYA 2 MENIT):
- * 1. Buat Spreadsheet baru di https://sheets.new
- * 2. Beri nama: "Rekap Nilai Tes Sumatif Matematika Sekolah Dasar"
- * 3. Buka menu "Ekstensi" -> "Apps Script"
- * 4. Hapus semua kode default, lalu salin dan tempel SELURUH KODE di bawah ini
- * 5. Klik "Simpan" (ikon disket)
- * 6. Klik tombol biru "Terapkan" (Deploy) -> "Penerapan Baru" (New Deployment)
- * 7. Pilih jenis: "Aplikasi Web" (Web App)
- * 8. PENGATURAN WAJIB:
- *    - Jalankan sebagai (Execute as): "Saya" (Me)
- *    - Siapa yang memiliki akses (Who has access): "Siapa saja" (Anyone) -> SANGAT PENTING!
- * 9. Klik "Terapkan", berikan Otorisasi Akun Google Anda
- * 10. Salin URL Aplikasi Web (berakhiran /exec) dan tempelkan ke menu "Pengaturan URL Spreadsheet" di Panel Guru.
+ * PANDUAN PEMBARUAN AGAR TEKS JAWABAN SISWA MUNCUL (HANYA 1 MENIT):
+ * 1. Buka Spreadsheet Anda di Google Drive
+ * 2. Buka menu "Ekstensi" (Extensions) -> "Apps Script"
+ * 3. Hapus seluruh kode lama di editor, lalu TEMPELKAN KODE DI BAWAH INI
+ * 4. Klik ikon "Simpan" (Ctrl+S / Ikon Disket)
+ * 5. Klik tombol biru "Terapkan" (Deploy) -> "Kelola Penerapan" (Manage Deployments)
+ * 6. Klik ikon PENSIL (Edit) pada penerapan yang aktif
+ * 7. Pada bagian "Versi" (Version), pilih "Versi Baru" (New Version) -> Klik "Terapkan" (Deploy)
+ * 8. SELESAI! Kolom ke-11 "Teks Jawaban Siswa" akan otomatis muncul di Spreadsheet Anda.
  */
 
 function doGet(e) {
@@ -502,8 +505,26 @@ function doPost(e) {
         "Salah",
         "Nilai",
         "Status",
-        "Mata Pelajaran"
+        "Mata Pelajaran",
+        "Teks Jawaban Siswa"
       ]);
+    } else {
+      // Pastikan header "Teks Jawaban Siswa" ada di baris 1 (kolom ke-11) jika belum ada
+      var lastCol = sheet.getLastColumn();
+      if (lastCol > 0) {
+        var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+        var hasJawabanCol = false;
+        for (var h = 0; h < headers.length; h++) {
+          var hName = String(headers[h] || "").toLowerCase();
+          if (hName.indexOf("jawaban") !== -1 || hName.indexOf("rincian") !== -1) {
+            hasJawabanCol = true;
+            break;
+          }
+        }
+        if (!hasJawabanCol) {
+          sheet.getRange(1, lastCol + 1).setValue("Teks Jawaban Siswa");
+        }
+      }
     }
     
     // Fitur Delete jika diminta
@@ -528,14 +549,29 @@ function doPost(e) {
     // Fitur Tambah / Simpan Hasil Tes Siswa
     var timestamp = contents.timestamp || Utilities.formatDate(new Date(), "GMT+8", "dd/MM/yyyy HH:mm:ss");
     var nama = contents.studentName || contents.nama || "";
-    var kelas = contents.className || contents.kelas || "VI";
+    var kelas = contents.className || contents.kelas || "5";
     var noAbsen = contents.absenNumber || contents.noAbsen || "";
     var tglLahir = contents.birthDate || contents.tglLahir || "";
     var benar = contents.correctCount !== undefined ? contents.correctCount : (contents.benar || 0);
     var salah = contents.incorrectCount !== undefined ? contents.incorrectCount : (contents.salah || 0);
     var nilai = contents.finalScore !== undefined ? contents.finalScore : (contents.nilai || 0);
     var status = contents.status || (nilai >= 70 ? "Lulus" : "Belum Lulus");
-    var mataPelajaran = contents.mataPelajaran || "MATEMATIKA";
+    var mataPelajaran = contents.mataPelajaran || "Pendidikan Pancasila";
+    
+    // Teks Hasil Jawaban Siswa lengkap nomor 1 s.d. 45
+    var teksJawaban = contents.teksJawaban || contents.rincianJawaban || contents.jawabanSiswa || "";
+    if (!teksJawaban && contents.answers) {
+      var parts = [];
+      for (var k in contents.answers) {
+        var ans = contents.answers[k];
+        if (typeof ans === "object") {
+          parts.push("No " + k + ": " + JSON.stringify(ans));
+        } else {
+          parts.push("No " + k + ": " + ans);
+        }
+      }
+      teksJawaban = parts.join(" | ");
+    }
     
     sheet.appendRow([
       timestamp,
@@ -547,12 +583,13 @@ function doPost(e) {
       salah,
       nilai,
       status,
-      mataPelajaran
+      mataPelajaran,
+      teksJawaban
     ]);
     
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      message: "Hasil tes siswa berhasil disimpan ke spreadsheet"
+      message: "Hasil tes siswa dan teks rincian jawaban berhasil disimpan ke Google Spreadsheet"
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({

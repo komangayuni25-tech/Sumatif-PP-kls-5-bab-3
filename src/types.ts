@@ -60,6 +60,7 @@ export interface ExamResult {
   nilai: number;
   status: 'Lulus' | 'Belum Lulus';
   detailJawaban?: Record<number, AnswerValue>;
+  teksJawaban?: string;
 }
 
 export type AppStage = 1 | 2 | 3 | 4;

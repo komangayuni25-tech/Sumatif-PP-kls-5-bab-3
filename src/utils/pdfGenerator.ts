@@ -228,6 +228,47 @@ export function downloadStudentResultPDF(result: ExamResult): void {
   doc.setFontSize(8.5);
   doc.text(`NIPPPK. ${CONFIG.NIP_GURU}`, colRight, lineY + 4);
 
+  // --- HALAMAN 2: LAMPIRAN RINCIAN TEKS JAWABAN SISWA (JIKA TERSEDIA) ---
+  if (result.teksJawaban) {
+    doc.addPage();
+    let y2 = 16;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('LAMPIRAN: RINCIAN TEKS JAWABAN PESERTA TES', pageWidth / 2, y2, { align: 'center' });
+    y2 += 5;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Nama: ${result.nama} • Absen: ${result.noAbsen} • Nilai: ${result.nilai} (${result.status}) • Benar: ${result.benar} / Salah: ${result.salah}`,
+      pageWidth / 2,
+      y2,
+      { align: 'center' }
+    );
+    y2 += 4;
+    doc.setLineWidth(0.4);
+    doc.line(15, y2, pageWidth - 15, y2);
+    y2 += 6;
+
+    const items = result.teksJawaban.split(' | ');
+    doc.setFontSize(8);
+    items.forEach((it) => {
+      if (y2 > 275) {
+        doc.addPage();
+        y2 = 16;
+      }
+      const isBenar = it.includes('BENAR') || it.includes('✓');
+      if (isBenar) {
+        doc.setTextColor(22, 101, 52);
+      } else {
+        doc.setTextColor(185, 28, 28);
+      }
+      const lines = doc.splitTextToSize(it, pageWidth - 32);
+      doc.text(lines, 16, y2);
+      y2 += lines.length * 4.2 + 1.2;
+    });
+    doc.setTextColor(0, 0, 0);
+  }
+
   // Simpan PDF
   const safeName = (result.nama || 'siswa').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Hasil_Tes_Sumatif_${safeName}_Absen_${result.noAbsen}.pdf`);

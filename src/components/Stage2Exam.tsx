@@ -182,25 +182,26 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
     if (currentIndex < totalQuestions - 1) setCurrentIndex(currentIndex + 1);
   };
 
-  // Hitung Nilai & Validasi
+  // Hitung Nilai & Validasi serta Rangkum Teks Jawaban Siswa
   const calculateResult = (): ExamResult => {
     let totalScore = 0;
     let benarCount = 0;
 
+    // Simpan jawaban berdasarkan ID soal original (1 s.d. 45)
+    const answersByOriginalId: Record<number, AnswerValue> = {};
+
     shuffledQuestions.forEach((sq, idx) => {
       const userAns = answers[idx];
-      // Cari soal original untuk periksa kunci jawaban
       const origQ = questions.find((q) => q.id === sq.originalQuestionId) || sq;
+      answersByOriginalId[origQ.id] = userAns;
 
       if (sq.type === 'pg') {
-        // Cocokkan teks opsi yang dipilih dengan teks opsi dari kunci jawaban original
         const correctOpt = origQ.options?.find((o) => o.id === origQ.correctAnswer);
         if (correctOpt && userAns === correctOpt.text) {
           totalScore += 1;
           benarCount += 1;
         }
       } else if (sq.type === 'benar_salah') {
-        // Cocokkan jawaban Benar atau Salah
         if (
           typeof userAns === 'string' &&
           typeof origQ.correctAnswer === 'string' &&
@@ -210,7 +211,6 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
           benarCount += 1;
         }
       } else if (sq.type === 'pgk') {
-        // Jawaban benar bisa lebih dari satu
         const correctKeys = Array.isArray(origQ.correctAnswer) ? origQ.correctAnswer : [];
         const correctTexts = (origQ.options || [])
           .filter((o) => correctKeys.includes(o.id))
@@ -226,7 +226,6 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
           benarCount += 1;
         }
       } else if (sq.type === 'pgk_kategori') {
-        // 3 pernyataan Benar/Salah
         const statements = origQ.statements || [];
         const userMap = (typeof userAns === 'object' && !Array.isArray(userAns) ? userAns : {}) as Record<string, boolean>;
 
@@ -241,11 +240,38 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
           totalScore += 1;
           benarCount += 1;
         } else {
-          // Memberi bobot proporsional untuk nilai akhir
           totalScore += statementsCorrect / statements.length;
         }
       }
     });
+
+    // Susun Rincian Teks Jawaban Siswa lengkap nomor 1 s.d. 45
+    const textAnswersList: string[] = [];
+    questions.forEach((q) => {
+      const uAns = answersByOriginalId[q.id];
+      if (q.type === 'pg') {
+        const matchedOpt = q.options?.find((o) => o.text === uAns);
+        const optLetter = matchedOpt ? matchedOpt.id : '-';
+        const isCorrect = optLetter === q.correctAnswer;
+        textAnswersList.push(
+          `No ${q.id}: [${optLetter}] ${uAns || '-'} (${isCorrect ? 'BENAR' : `SALAH, Kunci: ${q.correctAnswer}`})`
+        );
+      } else if (q.type === 'pgk_kategori') {
+        const uMap = (typeof uAns === 'object' && !Array.isArray(uAns) ? uAns : {}) as Record<string, boolean>;
+        const stDetails = (q.statements || []).map((st, sIdx) => {
+          const val = uMap[st.id];
+          const valStr = val === true ? 'Benar' : val === false ? 'Salah' : '-';
+          const isStCorrect = val === st.correctAnswer;
+          return `P${sIdx + 1}:${valStr} (${isStCorrect ? '✓' : '✗'})`;
+        });
+        textAnswersList.push(`No ${q.id} (PGK Kategori): ${stDetails.join(', ')}`);
+      } else if (q.type === 'benar_salah') {
+        const isCorrect = String(uAns).toLowerCase() === String(q.correctAnswer).toLowerCase();
+        textAnswersList.push(`No ${q.id}: ${uAns} (${isCorrect ? 'BENAR' : 'SALAH'})`);
+      }
+    });
+
+    const teksJawabanFormatted = textAnswersList.join(' | ');
 
     // Skala 0 - 100
     const finalScore = Math.round((totalScore / totalQuestions) * 100);
@@ -267,7 +293,8 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
       salah: salahCount,
       nilai: finalScore,
       status,
-      detailJawaban: answers,
+      detailJawaban: answersByOriginalId,
+      teksJawaban: teksJawabanFormatted,
     };
   };
 

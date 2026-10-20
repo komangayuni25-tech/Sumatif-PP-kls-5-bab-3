@@ -59,35 +59,35 @@ export const GasGuideModal: React.FC<GasGuideModalProps> = ({ isOpen, onClose })
           {/* Langkah demi langkah */}
           <div className="space-y-2.5">
             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-              Langkah Konfigurasi di Google Spreadsheet:
+              Langkah Konfigurasi / Pembaruan di Google Spreadsheet:
             </h4>
-            <ol className="list-decimal list-inside space-y-2 text-xs leading-relaxed text-slate-600">
+            <ol className="list-decimal list-inside space-y-2.5 text-xs leading-relaxed text-slate-600">
               <li>
-                Buka <strong className="text-slate-800">Google Spreadsheet</strong> baru di akun Google Anda.
+                Buka <strong className="text-slate-800">Google Spreadsheet</strong> Anda yang terhubung dengan ujian ini.
               </li>
               <li>
-                Pada baris 1 (Header Sheet1), pastikan kolom diberi nama persis seperti berikut:
-                <div className="mt-1.5 p-2 bg-slate-100 rounded-lg font-mono text-[11px] text-slate-800 overflow-x-auto whitespace-nowrap">
-                  A1: Timestamp | B1: Nama | C1: Kelas | D1: Nomor Absen | E1: Tanggal Lahir | F1: Benar | G1: Salah | H1: Nilai | I1: Status | J1: Mata Pelajaran
+                Header kolom pada baris 1 (A1 s.d. K1):
+                <div className="mt-1.5 p-2 bg-slate-100 rounded-lg font-mono text-[10.5px] text-slate-800 overflow-x-auto whitespace-nowrap">
+                  A1: Timestamp | B1: Nama | C1: Kelas | D1: Nomor Absen | E1: Tanggal Lahir | F1: Benar | G1: Salah | H1: Nilai | I1: Status | J1: Mata Pelajaran | K1: Teks Jawaban Siswa
                 </div>
+                <p className="mt-1 text-[11px] text-blue-700 font-medium">
+                  * Catatan: Skrip terbaru di bawah akan otomatis menambahkan kolom <strong>K1 (Teks Jawaban Siswa)</strong> jika belum ada di spreadsheet Anda.
+                </p>
               </li>
               <li>
-                Klik menu <strong className="text-slate-800">Ekstensi</strong> &gt; <strong className="text-slate-800">Apps Script</strong>.
+                Klik menu <strong className="text-slate-800">Ekstensi (Extensions)</strong> &gt; <strong className="text-slate-800">Apps Script</strong>.
               </li>
               <li>
-                Hapus kode bawaan, lalu salin dan tempel kode skrip di bawah ini ke editor Apps Script.
+                Hapus semua kode lama di editor, lalu klik tombol <strong>"Salin Skrip"</strong> di bawah dan tempelkan ke editor Apps Script.
               </li>
               <li>
-                Klik tombol <strong className="text-slate-800">Terapkan (Deploy)</strong> &gt; <strong className="text-slate-800">Penerapan baru (New Deployment)</strong>.
+                Klik ikon <strong className="text-slate-800">Simpan (Ctrl+S / Ikon Disket)</strong>.
               </li>
               <li>
-                Pilih jenis <strong className="text-slate-800">Aplikasi Web (Web App)</strong>.
+                Jika sudah pernah deploy: Klik <strong className="text-slate-800">Terapkan (Deploy)</strong> &gt; <strong className="text-slate-800">Kelola Penerapan (Manage Deployments)</strong> &gt; Klik ikon <strong>Pensil (Edit)</strong> &gt; Pada opsi <em>Versi (Version)</em> pilih <strong>"Versi Baru" (New Version)</strong> &gt; Klik <strong>Terapkan (Deploy)</strong>.
               </li>
               <li>
-                <strong className="text-red-600">PENTING:</strong> Pada kolom <em>Siapa yang memiliki akses (Who has access)</em>, pilih <strong className="text-slate-900">Siapa saja (Anyone)</strong> agar siswa dan sistem web dapat mengirim dan membaca data tanpa hambatan login akun Google.
-              </li>
-              <li>
-                Klik <strong className="text-slate-800">Terapkan</strong>, berikan izin akses (Otorisasi Google), lalu salin Web App URL (berakhiran <code>/exec</code>).
+                Jika baru pertama kali: Klik <strong className="text-slate-800">Terapkan</strong> &gt; <strong className="text-slate-800">Penerapan Baru</strong> &gt; Jenis <strong>Aplikasi Web</strong> &gt; Akses: <strong className="text-emerald-700">Siapa saja (Anyone)</strong>.
               </li>
             </ol>
           </div>

@@ -920,6 +920,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
       {/* Modal Detail Hasil Siswa */}
       <StudentDetailModal
         result={selectedStudentForDetail}
+        questions={questions}
         isOpen={Boolean(selectedStudentForDetail)}
         onClose={() => setSelectedStudentForDetail(null)}
       />
