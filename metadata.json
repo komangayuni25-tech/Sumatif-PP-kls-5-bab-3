@@ -1,0 +1,8 @@
+{
+  "name": "Tes Sumatif bab 3 kelas 5",
+  "description": "Aplikasi Tes Sumatif Pendidikan Pancasila Kelas 5 SD Negeri 3 Loloan Timur materi Norma dalam Kehidupanku dengan 40 soal PG & 5 PGK Kategori, sinkronisasi Google Spreadsheet, dan panel guru.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
